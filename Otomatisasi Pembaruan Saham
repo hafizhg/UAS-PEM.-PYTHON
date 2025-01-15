@@ -1,0 +1,73 @@
+import yfinance as yf
+from plyer import notification
+import schedule
+import time
+
+def get_stock_details(stock_symbol):
+    """Fetch stock details from Yahoo Finance"""
+    try:
+        stock = yf.Ticker(stock_symbol)
+        data = stock.history(period="1d")
+        current_price = data["Close"].iloc[-1]
+        info = stock.info
+        
+        details = {
+            "name": info["longName"],
+            "sector": info.get("sector", "N/A"),
+            "industry": info.get("industry", "N/A"),
+            "current_price": current_price,
+            "52_week_high": info.get("fiftyTwoWeekHigh", "N/A"),
+            "52_week_low": info.get("fiftyTwoWeekLow", "N/A"),
+        }
+        return details
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        return None
+
+def send_notification(stock_symbol, details):
+    """Send system notification with stock details"""
+    try:
+        notification.notify(
+            title=f"Stock Update: {stock_symbol}",
+            message=(
+                f"Name: {details['name']}\n"
+                f"Price: ${details['current_price']:.2f}\n"
+                f"52-Week High: ${details['52_week_high']}\n"
+                f"52-Week Low: ${details['52_week_low']}"
+            ),
+            timeout=10
+        )
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+
+def job(stock_symbol):
+    """Main job to fetch and notify stock updates"""
+    details = get_stock_details(stock_symbol)
+    if details:
+        print(f"\nUpdated Stock Information for {stock_symbol}:")
+        print(f"Name: {details['name']}")
+        print(f"Current Price: ${details['current_price']:.2f}")
+        print(f"Industry: {details['industry']}")
+        print(f"52-Week High: ${details['52_week_high']}")
+        print(f"52-Week Low: ${details['52_week_low']}")
+        send_notification(stock_symbol, details)
+
+def main():
+    # Get stock symbol from user
+    stock_symbol = input("Enter stock symbol (e.g., AAPL, BBCA.JK): ").upper()
+    
+    print(f"\nStarting stock market update automation for {stock_symbol}...")
+    
+    # Run job immediately
+    job(stock_symbol)
+    
+    # Schedule job to run every minute
+    schedule.every(1).minutes.do(job, stock_symbol)
+    
+    # Keep the script running
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+if __name__ == "__main__":
+    main()
